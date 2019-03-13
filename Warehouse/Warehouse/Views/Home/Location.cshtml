@@ -1,0 +1,218 @@
+﻿
+@{
+    ViewData["Title"] = "Location";
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="col-md-5"><h2>@ViewData["Title"]</h2></div>
+    </div>
+</div>
+<div class="row" id="gridTemplate">
+    <div id="grid"></div>
+</div>
+<div class="row hidden" id="formTemplate">
+    <div class="form-group float-label-control">
+        <label for="">Code</label>
+        <input type="text" class="form-control" placeholder="Code" readonly data-bind="value: code">
+    </div>
+    <div class="form-group float-label-control">
+        <label for="">Name</label>
+        <input type="text" class="form-control" placeholder="Name" data-bind="value: name">
+    </div>
+
+    <div class="form-group float-label-control">
+        <label for="">Outline</label>
+        <input type="text" class="form-control" placeholder="Outline" data-bind="value: outline">
+    </div>
+
+    <div class="form-group float-label-control">
+        <label for="">Coordinates</label>
+        <input type="text" class="form-control" placeholder="Coordinates" data-bind="value: coords">
+    </div>
+
+    <div class="form-group float-label-control">
+        <label for="">Location Type</label>
+        <input id="locType" type="text" class="form-control k-select-full" placeholder="Location Type" data-bind="value: locationTypeId">
+    </div>
+
+    <div class="form-group float-label-control">
+        <label for="">Parent</label>
+        <input id="parentLoc" type="text" class="form-control k-select-full" placeholder="Parent" data-bind="value: parentLocationId">
+    </div>
+
+    <div class="form-group float-label-control">
+        <button class="btn btn-success" id="btnSave">Save</button>
+        <button class="btn btn-danger" id="btnDelete" data-bind="visible: isVisible">Delete</button>
+        <button class="btn btn-warning" id="btnCancel">Cancel</button>
+    </div>
+</div>
+
+<script id="toolbarTemplate" type="text/x-kendo-template">
+    <a class="k-button" href="\#" onclick="return toolbar_click()">Create</a>
+</script>
+<script>
+    $(function () {
+
+        let viewModel = kendo.observable({
+            locationId: 0,
+            code: '',
+            name: '',
+            outline: '',
+            coords: '',
+            parentLocationId: null,
+            locationTypeId: null,
+            isVisible: function () {
+                return this.locationId > 0;
+            }
+        });
+
+        kendo.bind($('#formTemplate')[0], viewModel);
+
+        toolbar_click = function () {
+            $('#gridTemplate').hide();
+            $('#formTemplate').removeClass('hidden').show();
+            return false;
+        };
+
+        $('#btnCancel').click(function () {
+            window.location.reload();
+        });
+
+        $('#btnDelete').click(function () {
+            
+            $.ajax({
+                url: Api + 'Location/Delete',
+                type: 'DELETE',
+                data: viewModel.toJSON(),
+                success: function (res) {
+                    showNotification({ message: 'Record deleted' }, 'success', function () { window.location.reload(); });
+                },
+                error: function (errorData) {
+                    showError(errorData, errorData.status, errorData.errorThrown);
+                }
+            });
+        });
+
+        $('#btnSave').click(function () {
+            if (!viewModel)
+                return;
+            
+            let obj = viewModel.toJSON();
+
+            let actionType = viewModel.locationId == 0 ? 'POST' : 'PUT';
+            $.ajax({
+                type: actionType,
+                data: obj,
+                url: Api + 'Location/' + actionType,
+                success: function (res) {
+                    showNotification({ message: 'Record saved' }, 'success', function () { window.location.reload(); });
+                },
+                error: function (errorData) {
+                    showError(errorData, errorData.status, errorData.errorThrown);
+                }
+            });
+        });
+
+        let grid = $('#grid').kendoGrid({
+            dataSource: {
+                transport: {
+                    read: {
+                        url: Api + 'Location/List',
+                        dataType: 'json', type: 'GET'
+                    },
+                },
+                serverPaging: true,
+                sortable: true,
+                pageSize: 10,
+                schema: {
+                    data: "rows",
+                    total: "total"
+                }
+            },
+            toolbar: [
+                { template: kendo.template($("#toolbarTemplate").html()) }
+            ],
+            dataBound: function (e) {
+                e.sender.tbody.find('tr').dblclick(function (e) {
+                    
+                    let dataItem = grid.dataItem(this).toJSON();
+
+                    for (var prop in dataItem) {
+                        viewModel.set(prop, dataItem[prop]); // use the View-Model object after initialization
+                    }
+                    kendo.bind(document.body, viewModel);
+                    $('#gridTemplate').hide();
+                    $('#formTemplate').removeClass('hidden').show();
+                });
+            },
+            height: 550,
+            filterable: true,
+            sortable: true,
+            pageable: true,
+            columns: [
+                { field: 'locationId', title: 'Id', width: 75, hidden: true },
+                { field: 'locationType.name', title: 'Location Type', width: 100, template: '# if (locationType != null) { ##=locationType.name## } else {##}# ' },
+                { field: 'code', title: 'Code', width: 100 },
+                { field: 'name', title: 'Name', width: 150 },
+                { field: 'outline', title: 'Outline', width: 120 },
+                { field: 'coords', title: 'Coords', width: 100 },
+                { field: 'parentLocation.name', title: 'Parent', width: 120, template: '# if (parentLocation != null) { ##=parentLocation.name## } else {##}# ' },
+            ],
+        }).data('kendoGrid');
+
+
+        $('#parentLoc').kendoDropDownList({
+            dataSource: {
+                transport: {
+                    read: {
+                        url: Api + 'Location/List',
+                        dataType: "json"
+                    }
+                },
+                schema: {
+                    data: function (response) {
+                        return response.rows;
+                    },
+                    total: "total"
+                },
+                pageSize: 10000
+            },
+            autoBind: true,
+            optionLabel: { locationId: null, name: 'Bir değer seçin' },
+            dataValueField: 'locationId',
+            dataTextField: 'name',
+            select: function (e) {
+                let dataItem = e.dataItem.toJSON();
+                viewModel.set('parentLocationId', dataItem.locationId); 
+            }
+        }).data('kendoDropDownList');
+
+        $('#locType').kendoDropDownList({
+            dataSource: {
+                transport: {
+                    read: {
+                        url: Api + 'LocationType/List',
+                        dataType: "json"
+                    }
+                },
+                schema: {
+                    data: function (response) {
+                        return response.rows;
+                    },
+                    total: "total"
+                },
+                pageSize: 10000
+            },
+            autoBind: true,
+            optionLabel: { locationTypeId: null, name: 'Bir değer seçin' },
+            dataValueField: 'locationTypeId',
+            dataTextField: 'name',
+            select: function (e) {
+                let dataItem = e.dataItem.toJSON();
+                viewModel.set('locationTypeId', dataItem.locationTypeId);
+            }
+        }).data('kendoDropDownList');
+    });
+</script>
+

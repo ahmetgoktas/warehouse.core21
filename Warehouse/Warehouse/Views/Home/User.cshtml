@@ -1,0 +1,137 @@
+﻿
+@{
+    ViewData["Title"] = "User";
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="col-md-5"><h2>@ViewData["Title"]</h2></div>
+    </div>
+</div>
+<div class="row" id="gridTemplate">
+    <div id="grid"></div>
+</div>
+<div class="row hidden" id="formTemplate">
+    <div class="form-group float-label-control">
+        <label for="">Code</label>
+        <input type="text" class="form-control" placeholder="Code" readonly data-bind="value: code">
+    </div>
+    <div class="form-group float-label-control">
+        <label for="">Name</label>
+        <input type="text" class="form-control" placeholder="Name" data-bind="value: name">
+    </div>
+
+    <div class="form-group float-label-control">
+        <button class="btn btn-success" id="btnSave">Save</button>
+        <button class="btn btn-danger" id="btnDelete" data-bind="visible: isVisible">Delete</button>
+        <button class="btn btn-warning" id="btnCancel">Cancel</button>
+    </div>
+</div>
+
+<script id="toolbarTemplate" type="text/x-kendo-template">
+    <a class="k-button" href="\#" onclick="return toolbar_click()">Create</a>
+</script>
+<script>
+    $(function () {
+
+        let viewModel = kendo.observable({
+            userId: 0,
+            code: '',
+            name: '',
+            isVisible: function () {
+                return this.userId > 0;
+            }
+        });
+
+        kendo.bind($('#formTemplate')[0], viewModel);
+
+        toolbar_click = function () {
+            $('#gridTemplate').hide();
+            $('#formTemplate').removeClass('hidden').show();
+            return false;
+        };
+
+        $('#btnCancel').click(function () {
+            window.location.reload();
+        });
+
+        $('#btnDelete').click(function () {
+            
+            $.ajax({
+                url: Api + 'User/Delete',
+                type: 'DELETE',
+                data: viewModel.toJSON(),
+                success: function (res) {
+                    showNotification({ message: 'Record deleted' }, 'success', function () { window.location.reload(); });
+                },
+                error: function (errorData) {
+                    showError(errorData, errorData.status, errorData.errorThrown);
+                }
+            });
+        });
+
+        $('#btnSave').click(function () {
+            if (!viewModel)
+                return;
+            
+            let obj = viewModel.toJSON();
+
+            let actionType = viewModel.userId == 0 ? 'POST' : 'PUT';
+            $.ajax({
+                type: actionType,
+                data: obj,
+                url: Api + 'User/' + actionType,
+                success: function (res) {
+                    showNotification({ message: 'Record saved' }, 'success', function () { window.location.reload(); });
+                },
+                error: function (errorData) {
+                    showError(errorData, errorData.status, errorData.errorThrown);
+                }
+            });
+        });
+
+        let grid = $('#grid').kendoGrid({
+            dataSource: {
+                transport: {
+                    read: {
+                        url: Api + 'User/List',
+                        dataType: 'json', type: 'GET'
+                    },
+                },
+                serverPaging: true,
+                sortable: true,
+                pageSize: 10,
+                schema: {
+                    data: "rows",
+                    total: "total"
+                }
+            },
+            toolbar: [
+                { template: kendo.template($("#toolbarTemplate").html()) }
+            ],
+            dataBound: function (e) {
+                e.sender.tbody.find('tr').dblclick(function (e) {
+                    
+                    let dataItem = grid.dataItem(this).toJSON();
+
+                    for (var prop in dataItem) {
+                        viewModel.set(prop, dataItem[prop]); // use the View-Model object after initialization
+                    }
+                    kendo.bind(document.body, viewModel);
+                    $('#gridTemplate').hide();
+                    $('#formTemplate').removeClass('hidden').show();
+                });
+            },
+            height: 550,
+            filterable: true,
+            sortable: true,
+            pageable: true,
+            columns: [
+                { field: 'userId', title: 'Id', width: 75, hidden: true },
+                { field: 'code', title: 'Code', width: 100 },
+                { field: 'name', title: 'Name', width: 150 },
+            ],
+        }).data('kendoGrid');
+    });
+</script>
+
