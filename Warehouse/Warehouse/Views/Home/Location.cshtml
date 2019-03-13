@@ -139,7 +139,7 @@
                     let dataItem = grid.dataItem(this).toJSON();
 
                     for (var prop in dataItem) {
-                        viewModel.set(prop, dataItem[prop]); // use the View-Model object after initialization
+                        viewModel.set(prop, dataItem[prop]); 
                     }
                     kendo.bind(document.body, viewModel);
                     $('#gridTemplate').hide();

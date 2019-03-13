@@ -77,7 +77,6 @@
             let obj = viewModel.toJSON();
 
             let actionType = viewModel.movementTypeId == 0 ? 'POST' : 'PUT';
-            //let action = viewModel.movementTypeId == 0 ? 'Post' : 'Put';
             $.ajax({
                 type: actionType,
                 data: obj,
@@ -116,7 +115,7 @@
                     let dataItem = grid.dataItem(this).toJSON();
 
                     for (var prop in dataItem) {
-                        viewModel.set(prop, dataItem[prop]); // use the View-Model object after initialization
+                        viewModel.set(prop, dataItem[prop]); 
                     }
                     kendo.bind(document.body, viewModel);
                     $('#gridTemplate').hide();
